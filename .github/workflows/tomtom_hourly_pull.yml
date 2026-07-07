@@ -1,0 +1,66 @@
+name: TomTom Hourly Traffic Pull
+
+# Runs hourly from 6:00 AM to 10:00 PM India time (IST = UTC+5:30).
+# GitHub Actions cron is always UTC, so 6:00-22:00 IST = 00:30-16:30 UTC.
+# This triggers at minute 30 of every hour from 0 to 16 UTC -- 17 runs/day.
+on:
+  schedule:
+    - cron: '30 0-16 * * *'
+  workflow_dispatch:   # lets you manually trigger a run from the Actions tab to test
+
+# Give the workflow permission to commit results back to the repo
+permissions:
+  contents: write
+
+# Collection window -- edit these to change the 2-week period.
+# The job auto-skips (does nothing) outside this date range, so you
+# don't need to remember to disable it after 2 weeks.
+env:
+  START_DATE: '2026-07-08'
+  END_DATE: '2026-07-21'
+
+jobs:
+  pull-traffic-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check collection window
+        id: datecheck
+        run: |
+          TODAY=$(date -u +%F)
+          if [[ "$TODAY" < "$START_DATE" || "$TODAY" > "$END_DATE" ]]; then
+            echo "Today ($TODAY) is outside the collection window ($START_DATE to $END_DATE). Skipping."
+            echo "in_window=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Today ($TODAY) is inside the collection window. Proceeding."
+            echo "in_window=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout repository
+        if: steps.datecheck.outputs.in_window == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        if: steps.datecheck.outputs.in_window == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        if: steps.datecheck.outputs.in_window == 'true'
+        run: pip install -r requirements.txt
+
+      - name: Run TomTom traffic pull
+        if: steps.datecheck.outputs.in_window == 'true'
+        env:
+          TOMTOM_API_KEY_1: ${{ secrets.TOMTOM_API_KEY_1 }}
+          TOMTOM_API_KEY_2: ${{ secrets.TOMTOM_API_KEY_2 }}
+        run: python tomtom_traffic_pull.py
+
+      - name: Commit and push updated log
+        if: steps.datecheck.outputs.in_window == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add tomtom_traffic_log.csv
+          git diff --staged --quiet || git commit -m "Add traffic data: $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git push
