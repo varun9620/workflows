@@ -33,8 +33,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # each TomTom key has its own separate quota.
 API_KEYS = [
     k for k in [
-        os.environ.get("Wg0G1FhQZ2gXg9ra7boHbBtMBTw9sqb5"),
-        os.environ.get("cFUV7TpOMUJoxHGC1zgXN0RsGKGQHPxV"),
+        os.environ.get("TOMTOM_API_KEY_1"),
+        os.environ.get("TOMTOM_API_KEY_2"),
     ] if k
 ]
 if not API_KEYS:
