@@ -1,11 +1,13 @@
 name: TomTom Hourly Traffic Pull
 
-# Runs hourly from 6:00 AM to 10:00 PM India time (IST = UTC+5:30).
-# GitHub Actions cron is always UTC, so 6:00-22:00 IST = 00:30-16:30 UTC.
-# This triggers at minute 30 of every hour from 0 to 16 UTC -- 17 runs/day.
+# Runs hourly from 6:00 AM to 10:00 PM India time, expressed directly in
+# IST using GitHub's native timezone field (no manual UTC conversion needed).
+# Trigger minute is set to :17 (not :00 or :30) since GitHub's own docs warn
+# the top and half of every hour are the busiest, most delay-prone times.
 on:
   schedule:
-    - cron: '30 0-16 * * *'
+    - cron: '17 6-22 * * *'
+      timezone: 'Asia/Kolkata'
   workflow_dispatch:   # lets you manually trigger a run from the Actions tab to test
 
 # Give the workflow permission to commit results back to the repo
