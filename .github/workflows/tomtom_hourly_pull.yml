@@ -17,7 +17,7 @@ permissions:
 # don't need to remember to disable it after 2 weeks.
 env:
   START_DATE: '2026-07-08'
-  END_DATE: '2026-07-21'
+  END_DATE: '2026-09-21'
 
 jobs:
   pull-traffic-data:
