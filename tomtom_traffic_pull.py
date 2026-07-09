@@ -122,7 +122,40 @@ def split_points_across_keys(points, num_keys):
     return [points[i:i + chunk_size] for i in range(0, len(points), chunk_size)]
 
 
+def already_ran_this_hour(output_file):
+    """Check if the log already has a row timestamped in the current
+    calendar hour (e.g. 2026-07-08T14). Used so that if both GitHub's
+    own schedule AND an external trigger (e.g. cron-job.org) fire within
+    the same hour, the second one skips the API calls entirely instead
+    of burning through the daily quota twice."""
+    if not os.path.isfile(output_file):
+        return False
+    current_hour_prefix = datetime.now().strftime("%Y-%m-%dT%H")
+    try:
+        with open(output_file, newline="") as f:
+            reader = csv.DictReader(f)
+            for row in reversed(list(reader)):
+                ts = row.get("timestamp", "")
+                if ts.startswith(current_hour_prefix):
+                    return True
+                # Timestamps are appended in order, so once we hit an
+                # older hour we can stop scanning backwards.
+                if ts and not ts.startswith(current_hour_prefix):
+                    break
+    except (OSError, csv.Error) as e:
+        print(f"Warning: couldn't check existing log for dedupe ({e}); proceeding anyway.")
+        return False
+    return False
+
+
 def main():
+    if already_ran_this_hour(OUTPUT_FILE):
+        print(f"Data for the current hour already exists in {OUTPUT_FILE}. "
+              f"Skipping this run to avoid burning API quota twice "
+              f"(likely triggered by both GitHub's schedule and an "
+              f"external trigger within the same hour).")
+        return
+
     if not os.path.isfile(POINTS_CSV):
         print(f"ERROR: points file '{POINTS_CSV}' not found. "
               f"Run extract_points_from_road_network.py / "
